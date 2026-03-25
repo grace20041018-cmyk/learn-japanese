@@ -1,0 +1,415 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>日文五十音雙向測驗系統</title>
+    <style>
+        :root {
+            --primary-color: #3498db;
+            --secondary-color: #2c3e50;
+            --bg-color: #f0f8ff;
+            --card-bg: #ffffff;
+        }
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background-color: var(--bg-color);
+            margin: 0;
+            padding: 20px;
+            color: #333;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+        }
+        .container {
+            background-color: var(--card-bg);
+            padding: 30px;
+            border-radius: 15px;
+            box-shadow: 0 10px 20px rgba(0,0,0,0.1);
+            max-width: 600px;
+            width: 100%;
+            text-align: center;
+        }
+        .page { display: none; }
+        .page.active { display: block; }
+        
+        h1, h2 { color: var(--secondary-color); }
+        
+        button.action-btn {
+            background-color: var(--primary-color);
+            color: white;
+            border: none;
+            padding: 15px 30px;
+            font-size: 20px;
+            border-radius: 8px;
+            cursor: pointer;
+            transition: all 0.2s;
+            margin: 20px 0;
+            box-shadow: 0 4px 6px rgba(52, 152, 219, 0.3);
+        }
+        button.action-btn:hover {
+            background-color: #2980b9;
+            transform: translateY(-2px);
+        }
+
+        .scoreboard {
+            background-color: #f1c40f;
+            color: #fff;
+            padding: 15px;
+            border-radius: 10px;
+            font-size: 18px;
+            font-weight: bold;
+            margin-bottom: 20px;
+            text-shadow: 1px 1px 2px rgba(0,0,0,0.2);
+        }
+
+        .quiz-header {
+            display: flex;
+            justify-content: space-between;
+            font-size: 18px;
+            font-weight: bold;
+            margin-bottom: 20px;
+            padding-bottom: 10px;
+            border-bottom: 2px solid #ecf0f1;
+        }
+        .timer { color: #e74c3c; font-size: 24px;}
+        
+        .question-card {
+            background-color: #ecf0f1;
+            font-size: 80px;
+            padding: 30px;
+            border-radius: 10px;
+            margin-bottom: 10px;
+        }
+        
+        .mode-badge {
+            display: inline-block;
+            background-color: var(--secondary-color);
+            color: white;
+            padding: 5px 15px;
+            border-radius: 20px;
+            font-size: 14px;
+            margin-bottom: 20px;
+            font-weight: bold;
+        }
+
+        .options {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 15px;
+        }
+        .options button {
+            background-color: var(--primary-color);
+            color: white;
+            border: none;
+            padding: 20px;
+            font-size: 24px;
+            border-radius: 8px;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+        .options button.correct { background-color: #2ecc71 !important; }
+        .options button.wrong {
+            background-color: #e74c3c !important;
+            animation: shake 0.4s;
+        }
+
+        .table-container {
+            max-height: 400px;
+            overflow-y: auto;
+            border: 2px solid #ddd;
+            border-radius: 8px;
+            margin-top: 15px;
+        }
+        .kana-table {
+            width: 100%;
+            border-collapse: collapse;
+            table-layout: fixed;
+        }
+        .kana-table th {
+            background-color: var(--secondary-color);
+            color: white;
+            padding: 10px 0;
+            font-size: 16px;
+            position: sticky;
+            top: 0;
+            z-index: 10;
+        }
+        .kana-table td {
+            border: 1px solid #ddd;
+            text-align: center;
+            padding: 8px 2px;
+            height: 60px;
+            vertical-align: middle;
+            background-color: #fff;
+            transition: background-color 0.3s;
+        }
+        .empty-cell {
+            border: none !important;
+            background-color: transparent !important;
+        }
+        .cell-h { font-size: 20px; font-weight: bold; color: var(--secondary-color); }
+        .cell-k { font-size: 16px; color: #d35400; font-weight: bold; margin: 2px 0; }
+        .cell-r { font-size: 12px; color: #7f8c8d; }
+
+        .correct-cell { background-color: #d4edda !important; }
+        .wrong-cell { background-color: #f8d7da !important; }
+
+        @keyframes shake {
+            0%, 100% { transform: translateX(0); }
+            25%, 75% { transform: translateX(-5px); }
+            50% { transform: translateX(5px); }
+        }
+    </style>
+</head>
+<body>
+
+<div class="container">
+    
+    <div id="page-home" class="page active">
+        <h1>平假片假名 雙向隨機測驗</h1>
+        
+        <div class="scoreboard">
+            🏆 最佳分數：<span id="high-score-display">0</span> 分
+        </div>
+        
+        <button class="action-btn" onclick="startGame()">開始 1 分鐘雙向挑戰</button>
+        
+        <h2>五十音與濁音對照表</h2>
+        <div class="table-container">
+            <table class="kana-table">
+                <thead>
+                    <tr>
+                        <th>a 段</th><th>i 段</th><th>u 段</th><th>e 段</th><th>o 段</th>
+                    </tr>
+                </thead>
+                <tbody id="home-table-body">
+                    </tbody>
+            </table>
+        </div>
+    </div>
+
+    <div id="page-quiz" class="page">
+        <div class="quiz-header">
+            <div>分數: <span id="score-display">0</span></div>
+            <div class="timer">⏳ <span id="time-display">60</span>s</div>
+        </div>
+        
+        <div class="question-card" id="question-display">あ</div>
+        <div class="mode-badge" id="mode-badge">請選出對應的片假名</div>
+        
+        <div class="options" id="options-container">
+            </div>
+    </div>
+
+    <div id="page-result" class="page">
+        <h1>時間到！測驗結束</h1>
+        <h2 style="color: #e74c3c; margin-bottom: 5px;">最終分數: <span id="final-score">0</span></h2>
+        <p style="margin-top: 0; color: #7f8c8d; font-size: 14px;">（綠色為答對，紅色為答錯，白色為未測驗）</p>
+        
+        <div class="table-container">
+            <table class="kana-table">
+                <thead>
+                    <tr>
+                        <th>a 段</th><th>i 段</th><th>u 段</th><th>e 段</th><th>o 段</th>
+                    </tr>
+                </thead>
+                <tbody id="result-table-body">
+                    </tbody>
+            </table>
+        </div>
+        
+        <button class="action-btn" onclick="goHome()">返回首頁</button>
+    </div>
+
+</div>
+
+<script>
+    const kanaData = [
+        {h:'あ', k:'ア', r:'a'}, {h:'い', k:'イ', r:'i'}, {h:'う', k:'ウ', r:'u'}, {h:'え', k:'エ', r:'e'}, {h:'お', k:'オ', r:'o'},
+        {h:'か', k:'カ', r:'ka'}, {h:'き', k:'キ', r:'ki'}, {h:'く', k:'ク', r:'ku'}, {h:'け', k:'ケ', r:'ke'}, {h:'こ', k:'コ', r:'ko'},
+        {h:'さ', k:'サ', r:'sa'}, {h:'し', k:'シ', r:'shi'}, {h:'す', k:'ス', r:'su'}, {h:'せ', k:'セ', r:'se'}, {h:'そ', k:'ソ', r:'so'},
+        {h:'た', k:'タ', r:'ta'}, {h:'ち', k:'チ', r:'chi'}, {h:'つ', k:'ツ', r:'tsu'}, {h:'て', k:'テ', r:'te'}, {h:'と', k:'ト', r:'to'},
+        {h:'な', k:'ナ', r:'na'}, {h:'に', k:'ニ', r:'ni'}, {h:'ぬ', k:'ヌ', r:'nu'}, {h:'ね', k:'ネ', r:'ne'}, {h:'の', k:'ノ', r:'no'},
+        {h:'は', k:'ハ', r:'ha'}, {h:'ひ', k:'ヒ', r:'hi'}, {h:'ふ', k:'フ', r:'fu'}, {h:'へ', k:'ヘ', r:'he'}, {h:'ほ', k:'ホ', r:'ho'},
+        {h:'ま', k:'マ', r:'ma'}, {h:'み', k:'ミ', r:'mi'}, {h:'む', k:'ム', r:'mu'}, {h:'め', k:'メ', r:'me'}, {h:'も', k:'モ', r:'mo'},
+        {h:'や', k:'ヤ', r:'ya'}, {h:'ゆ', k:'ユ', r:'yu'}, {h:'よ', k:'ヨ', r:'yo'},
+        {h:'ら', k:'ラ', r:'ra'}, {h:'り', k:'リ', r:'ri'}, {h:'る', k:'ル', r:'ru'}, {h:'れ', k:'レ', r:'re'}, {h:'ろ', k:'ロ', r:'ro'},
+        {h:'わ', k:'ワ', r:'wa'}, {h:'を', k:'ヲ', r:'wo'}, {h:'ん', k:'ン', r:'n'},
+        {h:'が', k:'ガ', r:'ga'}, {h:'ぎ', k:'ギ', r:'gi'}, {h:'ぐ', k:'グ', r:'gu'}, {h:'げ', k:'ゲ', r:'ge'}, {h:'ご', k:'ゴ', r:'go'},
+        {h:'ざ', k:'ザ', r:'za'}, {h:'じ', k:'ジ', r:'ji'}, {h:'ず', k:'ズ', r:'zu'}, {h:'ぜ', k:'ゼ', r:'ze'}, {h:'ぞ', k:'ゾ', r:'zo'},
+        {h:'だ', k:'ダ', r:'da'}, {h:'ぢ', k:'ヂ', r:'ji'}, {h:'づ', k:'ヅ', r:'zu'}, {h:'で', k:'デ', r:'de'}, {h:'ど', k:'ド', r:'do'},
+        {h:'ば', k:'バ', r:'ba'}, {h:'び', k:'ビ', r:'bi'}, {h:'ぶ', k:'ブ', r:'bu'}, {h:'べ', k:'ベ', r:'be'}, {h:'ぼ', k:'ボ', r:'bo'},
+        {h:'ぱ', k:'パ', r:'pa'}, {h:'ぴ', k:'ピ', r:'pi'}, {h:'ぷ', k:'プ', r:'pu'}, {h:'ぺ', k:'ペ', r:'pe'}, {h:'ぽ', k:'ポ', r:'po'}
+    ];
+
+    const kanaMap = {};
+    kanaData.forEach(item => { kanaMap[item.h] = item; });
+
+    const kanaLayout = [
+        ['あ','い','う','え','お'],['か','き','く','け','こ'],['さ','し','す','せ','そ'],
+        ['た','ち','つ','て','と'],['な','に','ぬ','ね','の'],['は','ひ','ふ','へ','ほ'],
+        ['ま','み','む','め','も'],['や','','ゆ','','よ'],['ら','り','る','れ','ろ'],
+        ['わ','','','','を'],['ん','','','',''],
+        ['が','ぎ','ぐ','げ','ご'],['ざ','じ','ず','ぜ','ぞ'],['だ','ぢ','づ','で','ど'],
+        ['ば','び','ぶ','べ','ぼ'],['ぱ','ぴ','ぷ','ぺ','ぽ']
+    ];
+
+    let currentScore = 0;
+    let timer;
+    let timeLeft = 60;
+    let currentQuestion = {};
+    let isWaiting = false;
+    let answerStatus = {}; 
+    let highScore = 0;
+    let currentMode = 'H2K';
+
+    // 負責渲染 5 欄式表格的函數
+    function renderTable(tbodyId, withStatus) {
+        const tbody = document.getElementById(tbodyId);
+        if (!tbody) return; // 防呆機制
+        tbody.innerHTML = ''; 
+        
+        kanaLayout.forEach(row => {
+            const tr = document.createElement('tr');
+            row.forEach(hChar => {
+                const td = document.createElement('td');
+                if (hChar === '') {
+                    td.className = 'empty-cell';
+                } else {
+                    const data = kanaMap[hChar];
+                    if (data) {
+                        td.innerHTML = `<div class="cell-h">${data.h}</div><div class="cell-k">${data.k}</div><div class="cell-r">${data.r}</div>`;
+                        if (withStatus && answerStatus[hChar]) {
+                            td.classList.add(answerStatus[hChar] === 'correct' ? 'correct-cell' : 'wrong-cell');
+                        }
+                    }
+                }
+                tr.appendChild(td);
+            });
+            tbody.appendChild(tr);
+        });
+    }
+
+    // 初始化應用程式
+    function initApp() {
+        renderTable('home-table-body', false);
+        try {
+            highScore = localStorage.getItem('kanaHighScore') || 0;
+        } catch (e) { console.warn("無法讀取紀錄"); }
+        document.getElementById('high-score-display').textContent = highScore;
+    }
+
+    // 取代舊的 window.onload，確保腳本一讀取就執行畫表格的動作
+    document.addEventListener('DOMContentLoaded', initApp);
+    // 為了應對某些本地端瀏覽器提早觸發的狀況，多加一層直接呼叫
+    if (document.readyState === "complete" || document.readyState === "interactive") {
+        setTimeout(initApp, 1);
+    }
+
+    function showPage(pageName) {
+        document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
+        document.getElementById('page-' + pageName).classList.add('active');
+    }
+
+    function startGame() {
+        currentScore = 0;
+        timeLeft = 60;
+        answerStatus = {}; 
+        document.getElementById('score-display').textContent = currentScore;
+        document.getElementById('time-display').textContent = timeLeft;
+        
+        showPage('quiz');
+        generateQuestion();
+
+        timer = setInterval(() => {
+            timeLeft--;
+            document.getElementById('time-display').textContent = timeLeft;
+            if (timeLeft <= 0) endGame();
+        }, 1000);
+    }
+
+    function generateQuestion() {
+        if (timeLeft <= 0) return; 
+        isWaiting = false;
+        
+        currentMode = Math.random() < 0.5 ? 'H2K' : 'K2H';
+        const randomIndex = Math.floor(Math.random() * kanaData.length);
+        currentQuestion = kanaData[randomIndex];
+        
+        const qDisplay = document.getElementById('question-display');
+        const badge = document.getElementById('mode-badge');
+        
+        if (currentMode === 'H2K') {
+            qDisplay.textContent = currentQuestion.h;
+            badge.textContent = '請選出對應的【片假名】';
+            badge.style.backgroundColor = '#2c3e50';
+        } else {
+            qDisplay.textContent = currentQuestion.k;
+            badge.textContent = '請選出對應的【平假名】';
+            badge.style.backgroundColor = '#8e44ad'; 
+        }
+
+        let options = [currentQuestion];
+        while (options.length < 4) {
+            const wrongKana = kanaData[Math.floor(Math.random() * kanaData.length)];
+            if (!options.some(opt => opt.h === wrongKana.h)) options.push(wrongKana);
+        }
+
+        options.sort(() => Math.random() - 0.5);
+        const optionsContainer = document.getElementById('options-container');
+        optionsContainer.innerHTML = '';
+        
+        options.forEach(opt => {
+            const btn = document.createElement('button');
+            btn.textContent = currentMode === 'H2K' ? opt.k : opt.h;
+            btn.onclick = () => checkAnswer(opt, btn);
+            optionsContainer.appendChild(btn);
+        });
+    }
+
+    function checkAnswer(selectedOpt, btnElement) {
+        if (isWaiting) return;
+        isWaiting = true;
+
+        const buttons = document.getElementById('options-container').querySelectorAll('button');
+        const isCorrect = selectedOpt.h === currentQuestion.h;
+
+        if (isCorrect) {
+            btnElement.classList.add('correct');
+            currentScore += 10;
+            answerStatus[currentQuestion.h] = 'correct';
+            document.getElementById('score-display').textContent = currentScore;
+            setTimeout(generateQuestion, 300); 
+        } else {
+            btnElement.classList.add('wrong');
+            answerStatus[currentQuestion.h] = 'wrong';
+            
+            buttons.forEach(b => {
+                const correctText = currentMode === 'H2K' ? currentQuestion.k : currentQuestion.h;
+                if (b.textContent === correctText) b.classList.add('correct');
+            });
+            setTimeout(generateQuestion, 1000); 
+        }
+    }
+
+    function endGame() {
+        clearInterval(timer); 
+        if (currentScore > highScore) {
+            highScore = currentScore;
+            try { localStorage.setItem('kanaHighScore', highScore); } catch (e) {}
+            document.getElementById('high-score-display').textContent = highScore;
+        }
+
+        document.getElementById('final-score').textContent = currentScore;
+        renderTable('result-table-body', true);
+        showPage('result');
+    }
+
+    function goHome() {
+        showPage('home');
+    }
+</script>
+
+</body>
+</html>
